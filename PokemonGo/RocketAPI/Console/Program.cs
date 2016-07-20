@@ -5,6 +5,7 @@ using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using Google.Protobuf;
+using PokemonGo.RocketAPI.Console.Helper;
 using PokemonGo.RocketAPI.Enums;
 using PokemonGo.RocketAPI.Extensions;
 using PokemonGo.RocketAPI.GeneratedCode;
@@ -39,11 +40,28 @@ namespace PokemonGo.RocketAPI.Console
             var inventory = await client.GetInventory();
             var pokemons = inventory.Payload[0].Bag.Items.Select(i => i.Item?.Pokemon).Where(p => p != null && p?.PokemonId != InventoryResponse.Types.PokemonProto.Types.PokemonIds.PokemonUnset);
 
-
-            await ExecuteFarmingPokestopsAndPokemons(client);
+            ExecutePrintPokemonPowerQuotient(pokemons);
+            //await ExecuteFarmingPokestopsAndPokemons(client);
             //await ExecuteCatchAllNearbyPokemons(client);
 
-            
+
+        }
+
+        private static async Task ExecutePrintPokemonPowerQuotient(IEnumerable<InventoryResponse.Types.PokemonProto> pokemons)
+        {
+            pokemons = pokemons.OrderBy(p => p.PokemonId).ThenByDescending(p => p.GetPowerQuotient());
+            List<string[]> pokemonTable = new List<string[]>();
+            pokemonTable.Add(new[] { "Pokemon", "CP", "ATK(IV)", "DEF(IV)", "STA(IV)", "Perfect" });
+            foreach (var pokemon in pokemons)
+            {
+                if (pokemon.PokemonId != 0)
+                {
+                    var pokemonRow = new[] { pokemon.PokemonId.ToString().Split(new[] { "Pokemon" }, StringSplitOptions.None).GetValue(1).ToString(), pokemon.Cp.ToString(), pokemon.IndividualAttack.ToString(), pokemon.IndividualDefense.ToString(), pokemon.IndividualStamina.ToString(), pokemon.GetPowerQuotient() + "%" };
+                    pokemonTable.Add(pokemonRow);
+                }
+
+            }
+            System.Console.WriteLine(ArrayPrinterHelper.GetDataInTableFormat(pokemonTable));
         }
 
         private static async Task ExecuteFarmingPokestopsAndPokemons(Client client)
